@@ -20,6 +20,7 @@ def plot(data):
         axis.set_title(title)
     plt.show()
 
+
 def observation2state(observation):
     return (observation[0], observation[1], int(observation[2]))
 
@@ -102,7 +103,7 @@ def same_policy_flexible(env, policy, eposideNum, eposilon = 0.1):
             p[state][action] = p[state][action] + (g - p[state][action]) / c[state][action]
             policy[state] = eposilon / 2
             policy[state][np.argmax(p[state])] += 1 - eposilon
-    return p
+    return p, policy
 
 #异策略
 def evaluate_action_monteCarlo_diff_policy(env, policy, actionPolicy, eposideNum):
@@ -130,6 +131,33 @@ def evaluate_action_monteCarlo_diff_policy(env, policy, actionPolicy, eposideNum
                 break
     return p
 
+#异策略柔性搜索
+def diff_policy_flexible_search(env, policy, actionPolicy, eposideNum, eposilon = 0.1):
+    q = np.zeros_like(policy)
+    c = np.zeros_like(policy)
+    for i in range(eposideNum):
+        observation = env.reset()
+        state = observation2state(observation)
+        stateActionDict = []
+        g = 0.
+        importance = 1.
+        while True:
+            action = np.random.choice(env.action_space.n, actionPolicy[state])
+            stateActionDict.append((state, action))
+            observation, reward, done, _ = env.step(action)
+            if done:
+                g = reward
+                break
+        for state, action in reversed(stateActionDict):
+            c[state][action] += importance
+            q[state][action] += (g - q[state][action]) * importance / c[state][action]
+            policy[state] = 0.
+            policy[state][np.argmax(q[state])] = 1.
+            importance *= policy[state][action] / actionPolicy[state][policy]
+            if 0 == importance:
+                break
+
+
 
 #测试同策略
 # policy = np.zeros((22, 11, 2, 2))
@@ -139,19 +167,19 @@ def evaluate_action_monteCarlo_diff_policy(env, policy, actionPolicy, eposideNum
 # v = (q * policy).sum(axis=-1)
 
 #测试起始探索同策略
-# policy = np.zeros((22, 11, 2, 2))
-# policy[:, :, :, 1] = 1.
-# q, policy = same_policy_start_explore(env, policy, 500000)
-# v = q.max(axis=-1)
-# plot(policy.argmax(-1))
-# plot(v)
-
-#测试柔性策略
-policy = np.ones((22, 11, 2, 2)) * 0.5
-q, policy = same_policy_flexible(env, policy, 500000)
+policy = np.zeros((22, 11, 2, 2))
+policy[:, :, :, 1] = 1.
+q, policy = same_policy_start_explore(env, policy, 500000)
 v = q.max(axis=-1)
 plot(policy.argmax(-1))
 plot(v)
+
+#测试柔性策略
+# policy = np.ones((22, 11, 2, 2)) * 0.5
+# q, policy = same_policy_flexible(env, policy, 500)
+# v = q.max(axis=-1)
+# plot(policy.argmax(-1))
+# plot(v)
 
 
 
