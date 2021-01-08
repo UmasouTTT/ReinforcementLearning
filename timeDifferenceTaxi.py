@@ -181,10 +181,10 @@ def SARSALambdaPlay(train, render, agent, eposideNum):
 # plt.show()
 #
 # #测试LambdaSARSA
-agent = SARSALambdaAgent(env)
-eposideRewards = SARSALambdaPlay(train=True, render=False, agent=agent, eposideNum=5000)
-plt.plot(eposideRewards)
-plt.show()
+# agent = SARSALambdaAgent(env)
+# eposideRewards = SARSALambdaPlay(train=True, render=False, agent=agent, eposideNum=5000)
+# plt.plot(eposideRewards)
+# plt.show()
 
 
 
