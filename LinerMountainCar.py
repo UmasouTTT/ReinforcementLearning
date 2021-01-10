@@ -2,6 +2,7 @@ import gym
 import numpy as np
 import matplotlib.pyplot as plt
 from timeDifferencePlay import SARSAPlay
+from timeDifferencePlay import printMemoryUsage
 
 env = gym.make('MountainCar-v0')
 
@@ -90,11 +91,12 @@ class SARSAAgent:
             qs = [self.get_q(observation, action) for action in range(self.action_n)]
             return np.argmax(qs)
 
-    def learn(self, observation, action, reward, next_observaion, done, next_action):
+    def learn(self, observation, action, reward, next_observaion, next_action, done):
         u = reward + self.gamma * self.get_q(next_observaion, next_action) * (1. - done)
         td_error = u - self.get_q(observation, action)
         features = self.encode(observation, action)
         self.w[features] += (self.learning_rate * td_error)
+
 
 agent = SARSAAgent(env)
 eposideRewards = SARSAPlay(env=env, train=True, render=False, agent=agent, eposideNum=5000)

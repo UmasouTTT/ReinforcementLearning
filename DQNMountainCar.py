@@ -3,6 +3,13 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import tensorflow as tf
+from timeDifferencePlay import expectSARSAPlay
+import psutil
+import os
+import sys
+
+def printMemoryUsage():
+    print("内存占用:{}".format(psutil.Process(os.getpid()).memory_info().rss))
 
 class DQNReplayer:
     def __init__(self, capacity):
@@ -17,13 +24,14 @@ class DQNReplayer:
         self.i = (self.i + 1) % self.capacity
         self.count = min(self.count + 1, self.capacity)
 
+
     def sample(self, size):
         indices = np.random.choice(self.count, size=size)
-        return (np.stack(self.memory.loc[indices, field]) for field in self.memory.colums)
+        return (np.stack(self.memory.loc[indices, field]) for field in self.memory.columns)
 
 class DQNAgent:
-    def __init__(self, env, net_kwargs={}, gamma = 0.99, epsilon = 0.01,
-                 replayer_capacity=10000, batch_size=64):
+    def __init__(self, env, net_kwargs={}, gamma=0.99, epsilon=0.01,
+                 replayer_capacity=1, batch_size=64):
         observation_dim = env.observation_space.shape[0]
         self.action_n = env.action_space.n
         self.gamma = gamma
@@ -31,15 +39,16 @@ class DQNAgent:
         self.batch_size = batch_size
         self.replayer = DQNReplayer(replayer_capacity)
         self.evaluation_net = self.build_network(input_size=observation_dim,
-                                                 ouput_size=self.action_n, **net_kwargs)
+                                                 output_size=self.action_n, **net_kwargs)
         self.target_net = self.build_network(input_size=observation_dim,
-                                                 ouput_size=self.action_n, **net_kwargs)
+                                                 output_size=self.action_n, **net_kwargs)
         self.target_net.set_weights(self.evaluation_net.get_weights())
 
-    def build_network(self, input_size, hidden_sizes, output_size,
+    def build_network(self, input_size, output_size, hidden_sizes,
                       activation=tf.nn.relu, output_action=None,
                       learning_rate=0.01):
         model = tf.keras.Sequential()
+
         for layer, hidden_size in enumerate(hidden_sizes):
             kwargs = dict(input_shape=(input_size,)) if not layer else {}
             model.add(tf.keras.layers.Dense(units=hidden_size,
@@ -59,17 +68,25 @@ class DQNAgent:
         next_max_qs = next_qs.max(axis=-1)
         us = rewards + self.gamma * (1.-done) * next_max_qs
         targets = self.evaluation_net.predict(observations)
+        tf.keras.backend.clear_session()
         targets[np.arange(us.shape[0]), actions] = us
         self.evaluation_net.fit(observations, targets, verbose=0)
+        tf.keras.backend.clear_session()
         if done:
-            self.target_net.set_weights(self.evaluation_net)
+            self.target_net.set_weights(self.evaluation_net.get_weights())
 
-    def decide(self, observation):
+    def makeAction(self, observation):
         if np.random.rand() < self.epsilon:
             return np.random.randint(self.action_n)
         qs = self.evaluation_net.predict(observation[np.newaxis])
+        tf.keras.backend.clear_session()
         return np.argmax(qs)
 
 
-
+net_kwargs = {'hidden_sizes': [64,], 'learning_rate': 0.01}
+env = gym.make('MountainCar-v0')
+agent = DQNAgent(env, net_kwargs=net_kwargs)
+eposideRewards = expectSARSAPlay(env=env, train=True, render=False, agent=agent, eposideNum=5000)
+plt.plot(eposideRewards)
+plt.show()
 
