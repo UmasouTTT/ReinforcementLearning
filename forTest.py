@@ -2,7 +2,6 @@ import numpy as np
 
 a = np.array([1, 2, 3, 4]).reshape((2, 2))
 print(a)
-print(1 - a)
-b = np.array([2, 3, 4, 5]).reshape((2, 2))
-print(b)
-print(a * b)
+b = np.array([0, 1])
+print(np.arange(a.shape[0]))
+print(a[[0, 1], [0, 1]])

@@ -6,7 +6,7 @@ import tensorflow as tf
 from timeDifferencePlay import expectSARSAPlay
 import psutil
 import os
-import sys
+import gc
 
 def printMemoryUsage():
     print("内存占用:{}".format(psutil.Process(os.getpid()).memory_info().rss))
@@ -48,7 +48,6 @@ class DQNAgent:
                       activation=tf.nn.relu, output_action=None,
                       learning_rate=0.01):
         model = tf.keras.Sequential()
-
         for layer, hidden_size in enumerate(hidden_sizes):
             kwargs = dict(input_shape=(input_size,)) if not layer else {}
             model.add(tf.keras.layers.Dense(units=hidden_size,
@@ -61,25 +60,40 @@ class DQNAgent:
         model.compile(loss='mse', optimizer=optimizer)
         return model
 
+    def train_evaluation_net(self, observations, targets):
+        self.evaluation_net.fit(observations, targets, verbose=0)
+        #tf.keras.backend.clear_session()
+        #gc.collect()
+
+    def evaluation_net_predict(self, observations):
+        targets = self.evaluation_net.predict(observations)
+        return targets
+
+    def target_net_predict(self, observations):
+        targets = self.target_net.predict(observations)
+        return targets
+
+
+
+
+
     def learn(self, observation, action, reward, next_observation, done):
         self.replayer.store(observation, action, reward, next_observation, done)
         observations, actions, rewards, next_observations, dones = self.replayer.sample(self.batch_size)
-        next_qs = self.target_net.predict(next_observations)
+        next_qs = self.target_net_predict(next_observations)
         next_max_qs = next_qs.max(axis=-1)
         us = rewards + self.gamma * (1.-done) * next_max_qs
-        targets = self.evaluation_net.predict(observations)
-        tf.keras.backend.clear_session()
+        targets = self.evaluation_net_predict(observations)
         targets[np.arange(us.shape[0]), actions] = us
-        self.evaluation_net.fit(observations, targets, verbose=0)
-        tf.keras.backend.clear_session()
+        self.train_evaluation_net(observations, targets)
         if done:
             self.target_net.set_weights(self.evaluation_net.get_weights())
 
     def makeAction(self, observation):
         if np.random.rand() < self.epsilon:
             return np.random.randint(self.action_n)
-        qs = self.evaluation_net.predict(observation[np.newaxis])
-        tf.keras.backend.clear_session()
+        qs = self.evaluation_net_predict(observation[np.newaxis])
+        #tf.keras.backend.clear_session()
         return np.argmax(qs)
 
 

@@ -1,6 +1,7 @@
 import psutil
 import os
 import sys
+import psutil
 
 def SARSAPlay(env, train, render, agent, eposideNum):
     eposideRewards = []
@@ -20,7 +21,7 @@ def SARSAPlay(env, train, render, agent, eposideNum):
             if done:
                 eposideRewards.append(eposideReward)
                 break
-        print("eposide : {}, reward : {}".format(i, eposideReward))
+        print("eposide : {}, reward : {}, memory left : {}".format(i, eposideReward, psutil.virtual_memory().available))
     return eposideRewards
 
 def expectSARSAPlay(env, train, render, agent, eposideNum):
@@ -28,8 +29,8 @@ def expectSARSAPlay(env, train, render, agent, eposideNum):
     for i in range(eposideNum):
         state = env.reset()
         eposideReward = 0
+        step = 0
         while True:
-            print("代理内存占用:{}".format(sys.getsizeof(agent)))
             if render:
                 env.render()
             action = agent.makeAction(state)
@@ -37,12 +38,14 @@ def expectSARSAPlay(env, train, render, agent, eposideNum):
             eposideReward += reward
             if train:
                 agent.learn(state, action, reward, nextState, done)
-                printMemoryUsage()
+                if psutil.virtual_memory().available < 10000:
+                    break
             state = nextState
+            step += 1
             if done:
                 eposideRewards.append(eposideReward)
                 break
-        print("eposide : {}, reward : {}".format(i, eposideReward))
+        print("eposide : {}, reward : {}, memory left : {}".format(i, eposideReward, psutil.virtual_memory().available))
     return eposideRewards
 
 def SARSALambdaPlay(env, train, render, agent, eposideNum):
