@@ -1,8 +1,7 @@
 import gym
 import numpy as np
 import matplotlib.pyplot as plt
-from timeDifferencePlay import SARSAPlay
-from timeDifferencePlay import printMemoryUsage
+from tool.timeDifferencePlay import SARSAPlay
 
 env = gym.make('MountainCar-v0')
 

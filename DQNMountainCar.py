@@ -3,10 +3,10 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from timeDifferencePlay import expectSARSAPlay
+from tool.timeDifferencePlay import expectSARSAPlay
 import psutil
 import os
-import gc
+
 
 def printMemoryUsage():
     print("内存占用:{}".format(psutil.Process(os.getpid()).memory_info().rss))
@@ -31,7 +31,7 @@ class DQNReplayer:
 
 class DQNAgent:
     def __init__(self, env, net_kwargs={}, gamma=0.99, epsilon=0.01,
-                 replayer_capacity=1, batch_size=64):
+                 replayer_capacity=10000, batch_size=64):
         observation_dim = env.observation_space.shape[0]
         self.action_n = env.action_space.n
         self.gamma = gamma
@@ -72,10 +72,6 @@ class DQNAgent:
     def target_net_predict(self, observations):
         targets = self.target_net.predict(observations)
         return targets
-
-
-
-
 
     def learn(self, observation, action, reward, next_observation, done):
         self.replayer.store(observation, action, reward, next_observation, done)

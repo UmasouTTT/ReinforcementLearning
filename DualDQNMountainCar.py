@@ -1,7 +1,7 @@
 from DQNMountainCar import DQNAgent
 import numpy as np
 import gym
-from timeDifferencePlay import expectSARSAPlay
+from tool.timeDifferencePlay import expectSARSAPlay
 import matplotlib.pyplot as plt
 
 class DualDQNAgent(DQNAgent):
