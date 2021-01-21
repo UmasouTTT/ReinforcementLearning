@@ -90,5 +90,26 @@ def monteCarlo_play(env, agent, render, eposideNum):
         print("eposide : {}, reward : {}".format(i, eposideReward))
     return eposideRewards
 
+def diffPolicyMonteCarlo_play(env, agent, playAgent, render, eposideNum):
+    eposideRewards = []
+    for i in range(eposideNum):
+        observation = env.reset()
+        eposideReward = 0
+        stateActionRewardList = []
+        while True:
+            if render:
+                env.render()
+            action, prob = playAgent.makeAction()
+            nextState, reward, done, _ = env.step(action)
+            stateActionRewardList.append((observation, action, reward, prob))
+            eposideReward += reward
+            observation = nextState
+            if done:
+                agent.learn(stateActionRewardList)
+                eposideRewards.append(eposideReward)
+                break
+        print("eposide : {}, reward : {}".format(i, eposideReward))
+    return eposideRewards
+
 def printMemoryUsage():
     print("内存占用:{}".format(psutil.Process(os.getpid()).memory_info().rss))

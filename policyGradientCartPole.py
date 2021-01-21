@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from tool import timeDifferencePlay
 import matplotlib.pyplot as plt
+import random
 
 #keras版本
 class VPGAgent:
@@ -62,9 +63,47 @@ class VPGAgent:
             output = np.eye(self.action_num)[df['action']]
             sampleWeight = df['psi'].values[:, np.newaxis]
 
-            self.evaluation_net.fit(input, output,sample_weight=sampleWeight , verbose=0)
+            self.evaluation_net.fit(input, output, sample_weight=sampleWeight , verbose=0)
 
             self.trace.clear()
+
+class DVPGAgent(VPGAgent):
+    def __init__(self, env, is_has_base_func, policy_kwargs={}, gamma=0.99):
+        super(DVPGAgent, self).__init__(env, is_has_base_func, policy_kwargs, gamma)
+        def dot(y_pred, y_true):
+            return -tf.reduce_sum(y_pred * y_true, axis=-1)
+        self.evaluation_net = self.makeNet(inputSize=env.observation_space.shape[0], outputSize=self.action_num,
+                                           loss_func=dot, **policy_kwargs)
+
+    def learn(self, state_action_reward_list):
+        df = pd.DataFrame(state_action_reward_list, columns=['observation', 'action', 'reward', 'prob'])
+        df['discount'] = self.gamma ** df.index.to_series()
+        df['discount_reward'] = df['reward'] * df['discount']
+        df['reward_sum'] = df['discount_reward'][::-1].cumsum() * df['discount']
+        df['psi'] = df['reward_sum']
+
+        input = np.stack(df['observation'].values)
+        if self.is_has_base_func:
+            df['base_result'] = self.base_net.predict(input)
+            df['psi'] -= df['base_result'] * df['discount']
+            df['output'] = df['reward_sum'] / df['discount']
+            self.base_net.fit(input, np.stack(df['output'].values), verbose=0)
+
+
+        output = np.eye(self.action_num)[df['action']]
+        self.evaluation_net.fit(x=input, y=output, sample_weight=np.stack((df['psi'] / df['prob']).values), verbose=0)
+
+
+
+class sampleAgent:
+    def __init__(self, env):
+        self.action_num = env.action_space.n
+
+    def makeAction(self):
+        return np.random.choice(self.action_num), 1/self.action_num
+
+
+
 
 
 
@@ -75,6 +114,15 @@ agent = VPGAgent(env, is_has_base_func=True, policy_kwargs=net_kwargs)
 eposideRewards = timeDifferencePlay.monteCarlo_play(env=env, render=False, agent=agent, eposideNum=300)
 plt.plot(eposideRewards)
 plt.show()
+
+
+# net_kwargs = {'hidden_sizes': [10,], 'learning_rate': 0.01}
+# env = gym.make('CartPole-v0')
+# agent = DVPGAgent(env, is_has_base_func=True, policy_kwargs=net_kwargs)
+# sampleAgent = sampleAgent(env)
+# eposideRewards = timeDifferencePlay.diffPolicyMonteCarlo_play(env=env, render=False, agent=agent, playAgent=sampleAgent, eposideNum=300)
+# plt.plot(eposideRewards)
+# plt.show()
 
 
 
